@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The 7-Minute Breach · Incident Response Game</title>
+<style>
+:root{--bg:#E6ECF0;--ink:#12202E;--mute:#52606D;--panel:#fff;--line:#C3CFD8;--amber:#E8A317;--ok:#0F7B6C;--bad:#B93A32;--part:#B7791F;--navy:#16324F}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,sans-serif;padding:16px}
+main{max-width:860px;margin:0 auto}
+h1,h2{font-family:Rockwell,"Roboto Slab",Georgia,serif;line-height:1.15;margin:0 0 8px}
+h1{font-size:2.3rem}h2{font-size:1.5rem}
+p{margin:0 0 12px;max-width:68ch}
+.rail{display:flex;align-items:center;gap:0;background:var(--navy);color:#cfe0ee;border-radius:10px;padding:12px 16px;margin-bottom:14px;flex-wrap:wrap}
+.rail .line{display:flex;align-items:center;flex:1;min-width:230px}
+.n{font-weight:700;font-size:.95rem;padding:2px 10px;border:2px solid #4a6b8a;border-radius:20px;color:#8fb0cc;white-space:nowrap}
+.n.lit{border-color:var(--amber);color:var(--navy);background:var(--amber)}
+.seg{flex:1;height:2px;background:#4a6b8a;min-width:14px}
+.meta{margin-left:auto;text-align:right;font-size:.9rem;padding-left:12px}
+.meta b{font-size:1.3rem;color:#fff}
+.reveal{border-left:6px solid var(--amber);background:#fff7e0;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:16px;font-weight:600}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin:14px 0}
+.card{display:flex;gap:10px;align-items:flex-start;text-align:left;font:inherit;color:inherit;background:#F5F8FA;border:2px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;min-height:64px}
+.card:hover:not(:disabled){border-color:var(--navy)}
+.card i{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);background:#fff;font-style:normal;font-weight:700;font-size:.85rem;display:grid;place-items:center}
+.card span{flex:1}
+.card small{display:block;margin-top:4px;color:var(--mute);font-size:.82rem}
+.card.on{border-color:var(--navy);background:#E3EDF6}
+.card.on i{background:var(--navy);color:#fff;border-color:var(--navy)}
+.card.ok{border-color:var(--ok);background:#E1F3EF}.card.ok i{background:var(--ok);color:#fff;border-color:var(--ok)}
+.card.bad{border-color:var(--bad);background:#FBE9E7}.card.bad i{background:var(--bad);color:#fff;border-color:var(--bad)}
+.card.part{border-color:var(--part);background:#FFF3DC}.card.part i{background:var(--part);color:#fff;border-color:var(--part)}
+.card.miss{border-style:dashed;border-color:var(--ok)}
+.card:disabled{cursor:default}
+.bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+button.go{font:inherit;font-weight:700;background:var(--navy);color:#fff;border:0;border-radius:8px;padding:10px 22px;cursor:pointer}
+button.go:disabled{background:#9aa9b6;cursor:not-allowed}
+button.alt{background:#fff;color:var(--navy);border:2px solid var(--navy)}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.fb{margin-top:14px;padding:12px 14px;border-radius:8px;background:#EEF3F7}
+.fb b{font-size:1.1rem}
+table{border-collapse:collapse;width:100%;margin:10px 0}
+td,th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left}
+.sort{display:grid;gap:8px;margin:14px 0}
+.row{display:flex;gap:10px;align-items:center;border:2px solid var(--line);border-radius:8px;padding:8px 10px;background:#F5F8FA;flex-wrap:wrap}
+.row .t{flex:1;min-width:200px}
+.row button{font:inherit;border:2px solid var(--line);background:#fff;border-radius:6px;padding:4px 12px;cursor:pointer}
+.row button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.row.ok{border-color:var(--ok);background:#E1F3EF}.row.bad{border-color:var(--bad);background:#FBE9E7}
+.row small{flex-basis:100%;color:var(--mute)}
+input{font:inherit;padding:10px 12px;border:2px solid var(--line);border-radius:8px;min-width:240px}
+.big{font-family:Rockwell,Georgia,serif;font-size:3rem;line-height:1}
+@media(prefers-reduced-motion:no-preference){.reveal{animation:in .4s}@keyframes in{from{opacity:0;transform:translateX(-8px)}}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const app=$('#app');
+let st={s:-1,team:'',pts:[0,0,0,0,0,0,0]};
+const total=()=>st.pts.reduce((a,b)=>a+b,0);
+
+/* ---------- content ---------- */
+const R1=[
+ {t:'Validate the alert: true or false positive?',o:0,w:'Never act on an unverified alert.'},
+ {t:'Identify the database and the account used',o:1,w:'Scope comes before action.'},
+ {t:'Inspect identity and sign-in logs',o:2,w:'Shows who logged in, from where and how.'},
+ {t:'Check for recent policy or permission changes',o:3,w:'A new policy may explain how access was gained.'},
+ {t:'Assess the scope of the query',o:4,w:'Tells you what may have been read.'},
+ {t:'Delete the suspicious account',o:-1,w:'Trap: destroys evidence.'},
+ {t:'Reboot the database server',o:-1,w:'Trap: wipes volatile evidence and session data.'},
+ {t:'Email all users that a breach has happened',o:-1,w:'Trap: nothing is confirmed yet.'}];
+const R2=[
+ {t:'Identity and sign-in logs',ok:1,w:'Who authenticated, from where.'},
+ {t:'Cloud audit logs',ok:1,w:'Records the new access policy.'},
+ {t:'Database audit and query logs',ok:1,w:'Shows what was queried.'},
+ {t:'Network records (flow or egress logs)',ok:1,w:'Shows whether data left the environment.'},
+ {t:'Policy change history',ok:1,w:'Who granted access, and when.'},
+ {t:'Relevant application logs',ok:1,w:'Links the activity to an application session.'},
+ {t:'Database account and role listing',ok:1,w:'Captures who holds access right now.'},
+ {t:'The original alert record',ok:1,w:'Anchors the timeline.'},
+ {t:'Staff canteen menu',ok:0,w:'Irrelevant.'},
+ {t:'Office printer log',ok:0,w:'Irrelevant.'},
+ {t:'Marketing newsletter statistics',ok:0,w:'Irrelevant.'},
+ {t:'Photos from the company picnic',ok:0,w:'Irrelevant.'}];
+const R3A=[
+ {t:'Restrict the suspect identity and revoke the new policy',s:15,w:'Targeted, justified, reversible, keeps evidence.'},
+ {t:'Shut down the entire database and every app using it',s:5,w:'Contains the incident but causes heavy business impact.'},
+ {t:'Delete the account and clear its logs',s:0,w:'Destroys evidence.'},
+ {t:'Wait until the final report is written',s:0,w:'Delay lets the activity continue.'}];
+const R3B=[
+ {t:'Time of the action and who approved it',ok:1,w:'Accountability.'},
+ {t:'Account and session state before the change',ok:1,w:'Evidence of what you changed.'},
+ {t:'A copy of the new policy before revoking it',ok:1,w:'Preserves the artefact.'},
+ {t:'Expected business impact',ok:1,w:'Justifies proportionality.'},
+ {t:'How to reverse the action',ok:1,w:'Containment must be reversible.'},
+ {t:'A guess at the attacker’s nationality',ok:0,w:'Speculation, not documentation.'},
+ {t:'A social media post about the incident',ok:0,w:'Not part of the record.'},
+ {t:'Nothing: speed matters more',ok:0,w:'Undocumented actions cannot be defended.'}];
+const R4=[
+ {t:'Who owns the account that logged in',ok:1,w:'Identity is unconfirmed.'},
+ {t:'Where the login came from (IP, device, location)',ok:1,w:'Separates normal from unusual.'},
+ {t:'Who created the 10:08 policy',ok:1,w:'Admin, attacker or automation?'},
+ {t:'Which tables the query touched',ok:1,w:'Sets the sensitivity of the data.'},
+ {t:'How many rows or how much data was returned',ok:1,w:'“Large” needs a number.'},
+ {t:'Whether the data left the environment',ok:1,w:'Needed to claim exfiltration.'},
+ {t:'Whether the activity was authorised',ok:1,w:'Could be a legitimate job.'},
+ {t:'The attacker’s motive',ok:0,w:'Assumption, not a fact to collect.'},
+ {t:'The name of the company CEO',ok:0,w:'Irrelevant.'}];
+const R5=[
+ {t:'A login alert fired at 10:05.',f:1,w:'Recorded by the alert system.'},
+ {t:'A new access policy appeared at 10:08.',f:1,w:'Recorded in audit logs.'},
+ {t:'A large query result was recorded at 10:12.',f:1,w:'Recorded in the database.'},
+ {t:'The policy change happened before the large query.',f:1,w:'10:08 is earlier than 10:12.'},
+ {t:'The attacker created the policy.',f:0,w:'Creator not yet identified.'},
+ {t:'The login used stolen credentials.',f:0,w:'Needs identity and source evidence.'},
+ {t:'The login and the query were the same session.',f:0,w:'Needs session correlation.'},
+ {t:'Customer data was stolen.',f:0,w:'Access is not the same as theft.'},
+ {t:'The returned data left the environment.',f:0,w:'Needs network or egress evidence.'},
+ {t:'The audit log is evidence of the policy change.',f:1,w:'A direct record of the event.'}];
+const FINAL=[
+ {t:'Yes: a large query means data was stolen',w:'Query size shows access, not theft.'},
+ {t:'No: it shows possible data access. We still need what was returned, whether it left the environment, and who started it',ok:1,w:'Correct. Confirm content, exfiltration and initiator.'},
+ {t:'Yes, if it ran after the policy change',w:'Order of events is not proof of theft.'},
+ {t:'No: queries are never relevant to an incident',w:'They are central evidence.'}];
+
+/* ---------- UI helpers ---------- */
+function pick(o){
+  const picks=[],box=el('div','panel');
+  box.innerHTML=`<h2>${o.title}</h2><p>${o.intro}</p>${o.pre||''}<div class="grid"></div><div class="bar"><span class="cnt"></span><button class="go" disabled>Submit</button></div>`;
+  const grid=$('.grid',box),go=$('.go',box),cnt=$('.cnt',box);
+  const btns=o.items.map((it,k)=>{const b=el('button','card');b.innerHTML=`<i></i><span>${it.t}</span>`;
+    b.onclick=()=>{const p=picks.indexOf(k);if(p>=0)picks.splice(p,1);else if(!o.max||picks.length<o.max)picks.push(k);sync()};grid.append(b);return b});
+  function sync(){btns.forEach((b,k)=>{const p=picks.indexOf(k);b.classList.toggle('on',p>=0);$('i',b).textContent=p>=0?(o.ordered?p+1:'✓'):''});
+    cnt.textContent=picks.length+(o.max?' of '+o.max:'')+' selected'+(o.min>1?' (minimum '+o.min+')':'');go.disabled=picks.length<(o.min||1)}
+  sync();
+  go.onclick=()=>{
+    const r=o.grade(picks);
+    btns.forEach((b,k)=>{b.disabled=true;b.classList.remove('on');if(r.m[k]){b.classList.add(r.m[k]);$('i',b).textContent={ok:'✓',bad:'✗',part:'~',miss:'!'}[r.m[k]]}
+      b.insertAdjacentHTML('beforeend','');$('span',b).insertAdjacentHTML('beforeend',`<small>${o.items[k].w}</small>`)});
+    done(box,r.s,o.max_pts,o.reveal,go.parentNode);
+  };
+  return box;
+}
+function done(box,s,max,reveal,bar){
+  st.pts[st.s]=s;bar.remove();
+  const f=el('div','fb');
+  f.innerHTML=(max?`<b>Stage score: ${s} / ${max}</b>`:`<b>Discussion question (not scored)</b>`)+(reveal?`<p style="margin:6px 0 0">${reveal}</p>`:'')+
+   (max?'<p style="margin:6px 0 0;color:#52606D">✓ correct · ~ right card, wrong place · ✗ wrong · ! missed</p>':'');
+  const n=el('button','go');n.textContent='Continue';n.style.marginTop='12px';n.onclick=()=>{st.s++;render()};
+  f.append(n);box.append(f);f.scrollIntoView({behavior:'smooth',block:'nearest'});
+  $('.meta b').textContent=total();
+}
+const setGrade=(items,per,cap)=>p=>{let s=0,m=[];p.forEach(k=>{if(items[k].ok){s+=per;m[k]='ok'}else{s-=per;m[k]='bad'}});items.forEach((it,k)=>{if(it.ok&&!m[k])m[k]='miss'});return{s:Math.max(0,Math.min(cap,s)),m}};
+
+/* ---------- stages ---------- */
+const STAGES=[
+ {lab:'Round 1 · Alert validation',rev:'10:05 · Alert: unusual database login.',build(){
+   const items=shuffle(R1);
+   return pick({title:'Choose your first five triage actions, in order',intro:'Tap cards in the order you would act. Three cards are traps.',items,max:5,min:5,max_pts:50,
+    reveal:'Best order: validate the alert, identify database and account, inspect identity logs, check policy changes, assess query scope.',
+    grade:p=>{let s=0,m=[];p.forEach((k,pos)=>{const it=items[k];if(it.o<0){s-=10;m[k]='bad'}else if(it.o===pos){s+=10;m[k]='ok'}else{s+=5;m[k]='part'}});items.forEach((it,k)=>{if(it.o>=0&&!m[k])m[k]='miss'});return{s:Math.max(0,s),m}}})}},
+ {lab:'Round 2 · Evidence vault',rev:'10:08 · Audit logs show a new access policy. Warning: logs rotate every 24 hours, so preserve first.',build(){
+   const items=shuffle(R2);
+   return pick({title:'Which evidence do you preserve?',intro:'Select at least five sources. Wrong picks cost points.',items,min:5,max_pts:40,grade:setGrade(items,5,40),reveal:'Preserve identity, cloud audit, database, network, policy and application records before anything is changed.'})}},
+ {lab:'Round 3 · Containment',rev:'Management asks: should we shut everything down?',build(){
+   const items=shuffle(R3A);
+   return pick({title:'Choose one containment action',intro:'Pick the response you could justify to management and auditors.',items,max:1,min:1,max_pts:15,
+    reveal:'Best choice: restrict the suspect identity or revoke the new policy. It is targeted and keeps evidence.',
+    grade:p=>{const it=items[p[0]];const m=[];items.forEach((x,k)=>{if(x.s===15)m[k]=k===p[0]?'ok':'miss'});if(it.s<15)m[p[0]]=it.s?'part':'bad';return{s:it.s,m}}})}},
+ {lab:'Round 3 · Containment',rev:'Before or during containment you must document your actions.',build(){
+   const items=shuffle(R3B);
+   return pick({title:'What must be documented?',intro:'Select at least three items.',items,min:3,max_pts:15,grade:setGrade(items,3,15),reveal:'Documentation makes the action defensible and the evidence usable.'})}},
+ {lab:'Round 4 · Timeline',rev:'10:12 · The database records a large query result.',build(){
+   const items=shuffle(R4);
+   const pre='<table><tr><th>Time</th><th>Event</th><th>Source</th></tr><tr><td>10:05</td><td>Unusual login alert</td><td>Alert system</td></tr><tr><td>10:08</td><td>New access policy</td><td>Audit logs</td></tr><tr><td>10:12</td><td>Large query result</td><td>Database log</td></tr></table>';
+   return pick({title:'What additional facts do you need?',intro:'Select at least five facts to collect. Assumptions are not facts.',pre,items,min:5,max_pts:30,grade:setGrade(items,5,30),reveal:'Owner, source, policy creator, tables, volume, exfiltration and authorisation.'})}},
+ {lab:'Round 5 · Fact or hypothesis',rev:'The incident lead wants a status report. Separate what is confirmed from what is assumed.',build(){
+   const items=shuffle(R5),ans=[],box=el('div','panel');
+   box.innerHTML='<h2>Fact or hypothesis?</h2><p>Mark every statement.</p><div class="sort"></div><div class="bar"><span class="cnt"></span><button class="go" disabled>Submit</button></div>';
+   const list=$('.sort',box),go=$('.go',box);
+   items.forEach((it,k)=>{const r=el('div','row');r.innerHTML=`<span class="t">${it.t}</span><button>Fact</button><button>Hypothesis</button>`;
+     const[a,b]=r.querySelectorAll('button');
+     const set=v=>{ans[k]=v;a.classList.toggle('on',v===1);b.classList.toggle('on',v===0);const c=ans.filter(x=>x!==undefined).length;$('.cnt',box).textContent=c+' of '+items.length+' marked';go.disabled=c<items.length};
+     a.onclick=()=>set(1);b.onclick=()=>set(0);list.append(r)});
+   go.onclick=()=>{let s=0;[...list.children].forEach((r,k)=>{const good=ans[k]===items[k].f;if(good)s+=5;r.classList.add(good?'ok':'bad');r.querySelectorAll('button').forEach(x=>x.disabled=true);r.insertAdjacentHTML('beforeend',`<small>${items[k].f?'Fact':'Hypothesis'}: ${items[k].w}</small>`)});
+     done(box,s,50,'',go.parentNode)};
+   return box}},
+ {lab:'Final question',rev:'Last question from the incident lead.',build(){
+   const items=shuffle(FINAL);
+   return pick({title:'Does the large query alone prove data theft?',intro:'Choose the best answer.',items,max:1,min:1,max_pts:0,
+    reveal:'It indicates possible data access only. Confirm what data was returned, whether it left the environment, and who initiated the activity.',
+    grade:p=>{const m=[];items.forEach((x,k)=>{if(x.ok)m[k]=k===p[0]?'ok':'miss';else if(k===p[0])m[k]='bad'});return{s:0,m}}})}}
+];
+const MAXS=[50,40,15,15,30,50];
+
+function head(S){
+  const h=el('div','rail');
+  const node=(t,at)=>`<span class="n ${st.s>=at?'lit':''}">${t}</span>`;
+  h.innerHTML=`<div class="line">${node('10:05',0)}<span class="seg"></span>${node('10:08',1)}<span class="seg"></span>${node('10:12',4)}</div><div class="meta">${S.lab}<br>${st.team} · <b>${total()}</b> pts</div>`;
+  return h}
+function start(){
+  const p=el('div','panel');
+  p.innerHTML=`<h1>The 7-Minute Breach</h1><p>You are the on-call response team. Between 10:05 and 10:12 a database shows an unusual login, a new access policy and a large query. Make the right calls, preserve the evidence and avoid the traps.</p><p>5 rounds · 200 points · about 45 minutes in teams of 4–5. Suggested roles: Triage Lead, Evidence Keeper, Containment Officer, Analyst.</p><div class="bar"><input id="tn" placeholder="Team name" maxlength="30" aria-label="Team name"><button class="go">Start incident</button></div>`;
+  $('.go',p).onclick=()=>{st.team=$('#tn',p).value.trim()||'Team';st.s=0;render()};
+  app.append(p)}
+function results(){
+  const t=total(),band=t>=170?'Incident commander':t>=120?'Senior analyst':t>=70?'Junior analyst':'Trainee: review the rounds and retry';
+  const rows=['Round 1 · Triage','Round 2 · Evidence','Round 3 · Containment action','Round 3 · Documentation','Round 4 · Timeline','Round 5 · Fact or hypothesis'].map((n,i)=>`<tr><td>${n}</td><td>${st.pts[i]} / ${MAXS[i]}</td></tr>`).join('');
+  const p=el('div','panel');
+  p.innerHTML=`<h2>Incident closed: ${st.team}</h2><div class="big">${t}<span style="font-size:1.2rem"> / 200</span></div><p style="margin-top:8px"><b>${band}</b></p><table>${rows}</table>
+  <h2 style="margin-top:16px">Debrief</h2><p>1. Which trap card tempted you most, and why?<br>2. What is the difference between containment and eradication?<br>3. How would your answer change if a legitimate admin created the 10:08 policy?</p>
+  <div class="bar"><button class="go" id="cp">Copy result</button><button class="go alt" id="rs">Play again</button></div>`;
+  $('#cp',p).onclick=async e=>{try{await navigator.clipboard.writeText(`The 7-Minute Breach: ${st.team} scored ${t}/200 (${band})`);e.target.textContent='Copied'}catch(x){e.target.textContent='Copy failed'}};
+  $('#rs',p).onclick=()=>{st={s:-1,team:'',pts:[0,0,0,0,0,0,0]};render()};
+  app.append(p)}
+function render(){
+  app.innerHTML='';scrollTo(0,0);
+  if(st.s<0)return start();
+  if(st.s>=STAGES.length)return results();
+  const S=STAGES[st.s];
+  app.append(head(S));
+  const r=el('div','reveal');r.textContent=S.rev;app.append(r,S.build());
+}
+render();
+</script>
+</body>
+</html>
